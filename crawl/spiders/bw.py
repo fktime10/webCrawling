@@ -5,7 +5,8 @@ from src.output import output
 from pipelines.formatters import AZsPipeline, DatesPipeline, CourtsPipeline
 from pipelines.texts import TextsPipeline
 from pipelines.exporters import ExportAsHtmlPipeline, FingerprintExportPipeline, RawExporter
-
+import json
+from src import config
 class SpdrBW(scrapy.Spider):
     name = "spider_bw"
     base_url = "https://lrbw.juris.de/cgi-bin/laender_rechtsprechung/"
@@ -32,9 +33,67 @@ class SpdrBW(scrapy.Spider):
         self.store_docId = store_docId
         self.postprocess = postprocess
         self.wait = wait
+        self.filter = []
         super().__init__(**kwargs)
 
     def start_requests(self):
+        url = "https://www.landesrecht-bw.de/jportal/wsrest/recherche3/init"
+        self.headers = config.bw_headers
+        self.cookies = config.bw_cookies
+        date = str(datetime.date.today())
+        time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
+        body = config.st_body % (date, time)
+        yield scrapy.Request(url=url, method="POST", headers=self.headers, body=body, cookies=self.cookies,
+                             dont_filter=True, callback=self.parse)
+
+    def parse(self, response):
+        for result in self.extract_data(response):
+            yield result
+        url = "https://www.landesrecht-bw.de/jportal/wsrest/recherche3/search"
+        self.headers["x-csrf-token"] = json.loads(response.body)["csrfToken"]
+        date = str(datetime.date.today())
+        time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
+        body = '{"searchTasks":{"RESULT_LIST":{"start":1,"size":25,"sort":"date","addToHistory":true,"addCategory":true},"RESULT_LIST_CACHE":{"start":25,"size":27},"FAST_ACCESS":{},"SEARCH_WORD_HITS":{}},"filters":{"CATEGORY":["Gesetze"]},"searches":[],"clientID":"bsst","clientVersion":"bsst - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (
+        date, time)
+        yield scrapy.Request(url=url, method="POST", headers=self.headers, body=body, cookies=self.cookies,
+                             meta={"batch": 26}, dont_filter=True, callback=self.parse_nextpage)
+
+    def parse_nextpage(self, response):
+        results = json.loads(response.body)
+        if "resultList" in results:
+            for result in self.extract_data(response):
+                yield result
+            url = "https://www.landesrecht-bw.de/jportal/wsrest/recherche3/search"
+            batch = response.meta["batch"]
+            date = str(datetime.date.today())
+            time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
+            body = '{"searchTasks":{"RESULT_LIST":{"start":%s,"size":25,"sort":"date","addToHistory":true,"addCategory":true},"RESULT_LIST_CACHE":{"start":%s,"size":27},"FAST_ACCESS":{}},"filters":{"CATEGORY":["Gesetze"]},"searches":[],"clientID":"bsst","clientVersion":"bsst - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (
+            batch, batch + 25, date, time)
+            batch += 25
+            yield scrapy.Request(url=url, method="POST", headers=self.headers, body=body, cookies=self.cookies,
+                                 meta={"batch": batch}, dont_filter=True, callback=self.parse_nextpage)
+
+    def extract_data(self, response):
+        results = json.loads(response.body)
+        if "resultList" in results:
+            for result in results["resultList"]:
+                r = {
+                    "postprocess": self.postprocess,
+                    "wait": self.wait,
+                    "court": None,
+                    "date": result["date"],
+                    "link": "https://www.landesrecht.sachsen-anhalt.de/bsst/document/" + result["docId"],
+                    "docId": result["docId"],
+                    "xcsrft": self.headers["x-csrf-token"]
+                }
+                if self.filter:
+                    for f in self.filter:
+                        if r["court"][0:len(f)].lower() == f:
+                            yield r
+                else:
+                    yield r
+
+    """def start_requests(self):
         start_urls = []
         base_url = self.base_url + "list.py?Gericht=bw&Art=en"
         add_years = lambda url : [url + str(y) for y in reversed(range(2007, datetime.date.today().year + 1))] # Urteilsdatenbank BW startet mit dem Jahr 2007
@@ -81,3 +140,4 @@ class SpdrBW(scrapy.Spider):
                 }
         if response.xpath("//img[@title='nächste Seite']"):
             yield response.follow(response.xpath("//img[@title='nächste Seite']/../@href").get(), callback=self.parse)
+"""

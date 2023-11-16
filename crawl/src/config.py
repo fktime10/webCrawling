@@ -27,6 +27,14 @@ json_headers_base = {
     "sec-ch-ua-platform": "\"Linux\""
 }
 
+bw_headers = json_headers_base | {
+    "Origin": "https://www.landesrecht-bw.de",
+    "Referer": "https://www.landesrecht-bw.de/bsbw/search",
+    "juris-portalid": "bsbw"
+}
+bw_cookies = {
+    "r3autologin": "\"bsbw\""
+}
 be_headers = json_headers_base | {
     "Origin": "https://gesetze.berlin.de",
     "Referer": "https://gesetze.berlin.de/bsbe/search",

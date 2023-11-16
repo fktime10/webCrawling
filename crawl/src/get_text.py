@@ -90,8 +90,8 @@ def be(item, headers, cookies):
 
     return result_items
 
-def bw(item):
-    if (item["wait"] == True): timelib.sleep(1)
+def bw(item, headers, cookies):
+    """if (item["wait"] == True): timelib.sleep(1)
     try:
         item["text"] = requests.get(item["link"], headers=config.HEADERS).text
     except:
@@ -101,7 +101,58 @@ def bw(item):
             item["filetype"] = "html"
             return item
         else:
-            output("empty page " + item["link"], "err")
+            output("empty page " + item["link"], "err")"""
+    url = "https://www.landesrecht-bw.de/jportal/wsrest/recherche3/document"
+    encoded_docId = quote(item["docId"], safe=':/')
+
+    headers["x-csrf-token"] = item["xcsrft"]
+    headers["Cookie"] = 'r3autologin="bsbw"'
+    # headers["Referer"] = f"https://www.lareda.hessenrecht.hessen.de/bshe/document/{item['docId']}/part/X"
+    date = str(datetime.date.today())
+    time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
+    doc_parts = ["S", "X"]
+    result_items = []
+
+    for doc_part in doc_parts:
+        # print('In--------------', doc_part)
+        headers[
+            "Referer"] = "https://www.landesrecht-bw.de/jportal/wsrest/recherche3/document/" + encoded_docId + "/part/" + doc_part
+        item["link"] = headers["Referer"]
+
+        body = {"docId": item["docId"], "format": "xsl", "keyword": None, "docPart": doc_part,
+                "sourceParams": {"source": "Unknown", "category": "Alles"}, "searches": [], "clientID": "bsbw",
+                "clientVersion": "bsbw - V07_12_00 - 09.11.2023 10:02", "r3ID": date + "T" + time + "Z"}
+
+        # print(body)
+
+        if item["wait"]:
+            timelib.sleep(1.75)
+
+        try:
+            import json
+            req = requests.post(url=url, cookies=cookies, headers=headers, data=json.dumps(body))
+            # print(req.text)
+            req.raise_for_status()
+        except requests.exceptions.JSONDecodeError as e:
+            print(f"JSON decoding error: {e}")
+            # Log the exception details for debugging
+            # print(f"Response text: {req.text}")
+        else:
+            data = req.json()
+            doc = html.fromstring(f'<!doctype html><html><head></head><body>{data["head"]}{data["text"]}</body></html>')
+            processed_item = {
+                "text": html.tostring(doc, pretty_print=True).decode("utf-8"),
+                "link": item["link"],
+                "docId": item["docId"],
+                "doc_part": doc_part,
+                "url": "www.landesrecht-bw.de",
+                "filetype": "html"
+            }
+            result_items.append(processed_item)
+
+    # print(result_items)
+
+    return result_items
 
 def by(item):
     try:
