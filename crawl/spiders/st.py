@@ -61,7 +61,7 @@ class SpdrST(scrapy.Spider):
         self.headers["x-csrf-token"] = json.loads(response.body)["csrfToken"]
         date = str(datetime.date.today())
         time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
-        body = '{"searchTasks":{"RESULT_LIST":{"start":1,"size":25,"sort":"date","addToHistory":true,"addCategory":true},"RESULT_LIST_CACHE":{"start":25,"size":27},"FAST_ACCESS":{},"SEARCH_WORD_HITS":{}},"filters":{"CATEGORY":["Rechtsprechung"]},"searches":[],"clientID":"bsst","clientVersion":"bsst - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (date, time)
+        body = '{"searchTasks":{"RESULT_LIST":{"start":1,"size":25,"sort":"date","addToHistory":true,"addCategory":true},"RESULT_LIST_CACHE":{"start":25,"size":27},"FAST_ACCESS":{},"SEARCH_WORD_HITS":{}},"filters":{"CATEGORY":["Gesetze"]},"searches":[],"clientID":"bsst","clientVersion":"bsst - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (date, time)
         yield scrapy.Request(url=url, method="POST", headers=self.headers, body=body, cookies=self.cookies, meta={"batch": 26}, dont_filter=True, callback=self.parse_nextpage)
 
     def parse_nextpage(self, response):
@@ -73,7 +73,7 @@ class SpdrST(scrapy.Spider):
             batch = response.meta["batch"]
             date = str(datetime.date.today())
             time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
-            body = '{"searchTasks":{"RESULT_LIST":{"start":%s,"size":25,"sort":"date","addToHistory":true,"addCategory":true},"RESULT_LIST_CACHE":{"start":%s,"size":27},"FAST_ACCESS":{}},"filters":{"CATEGORY":["Rechtsprechung"]},"searches":[],"clientID":"bsst","clientVersion":"bsst - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (batch, batch + 25, date, time)
+            body = '{"searchTasks":{"RESULT_LIST":{"start":%s,"size":25,"sort":"date","addToHistory":true,"addCategory":true},"RESULT_LIST_CACHE":{"start":%s,"size":27},"FAST_ACCESS":{}},"filters":{"CATEGORY":["Gesetze"]},"searches":[],"clientID":"bsst","clientVersion":"bsst - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (batch, batch + 25, date, time)
             batch += 25
             yield scrapy.Request(url=url, method="POST", headers=self.headers, body=body, cookies=self.cookies, meta={"batch": batch}, dont_filter=True, callback=self.parse_nextpage)
     
@@ -84,9 +84,8 @@ class SpdrST(scrapy.Spider):
                 r = {
                     "postprocess": self.postprocess,
                     "wait": self.wait,
-                    "court": result["titleList"][0],
+                    "court": None,
                     "date": result["date"],
-                    "az": result["titleList"][1],
                     "link": "https://www.landesrecht.sachsen-anhalt.de/bsst/document/" + result["docId"],
                     "docId": result["docId"],
                     "xcsrft" : self.headers["x-csrf-token"] 

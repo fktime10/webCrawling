@@ -456,18 +456,54 @@ def st(item, headers, cookies):
     headers["Referer"] = item["link"]
     date = str(datetime.date.today())
     time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
-    body = '{"docId":"%s","format":"xsl","keyword":null,"docPart":"L","sourceParams":{"source":"TL","position":1,"sort":"date","category":"Rechtsprechung"},"searches":[],"clientID":"bsst","clientVersion":"bsst - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (item["docId"], date, time)
-    if (item["wait"] == True): timelib.sleep(1.75)
-    try:
-        req = requests.post(url=url, cookies=cookies, headers=headers, data=body)
-    except:
-        output("could not retrieve " + item["link"], "err")
-    else:
-        data = req.json()
-        doc = html.fromstring(f'<!doctype html><html><head><title>{item["az"]}</title></head><body>{data["head"]}{data["text"]}</body></html>')
-        item["text"] = html.tostring(doc, pretty_print=True).decode("utf-8")
-        item["filetype"] = "html"
-        return item
+    doc_parts = ["S", "X"]
+    result_items = []
+    encoded_docId = quote(item["docId"], safe=':/')
+
+    headers["x-csrf-token"] = item["xcsrft"]
+    headers["Cookie"] = 'r3autologin="bsst"'
+
+    for doc_part in doc_parts:
+        # print('In--------------', doc_part)
+        headers[
+            "Referer"] = "https://www.landesrecht.sachsen-anhalt.de/jportal/wsrest/recherche3/document/" + encoded_docId + "/part/" + doc_part
+        item["link"] = headers["Referer"]
+
+        body = {"docId": item["docId"], "format": "xsl", "keyword": None, "params": {"fixedPart": "true"},
+                "docPart": doc_part,
+                "sourceParams": {"source": "Unknown", "category": "Alles"}, "searches": [], "clientID": "bsst",
+                "clientVersion": "bsst - V07_12_00 - 09.11.2023 10:02", "r3ID": date + "T" + time + "Z"}
+
+        # print(body)
+
+        if item["wait"]:
+            timelib.sleep(1.75)
+
+        try:
+            import json
+            req = requests.post(url=url, cookies=cookies, headers=headers, data=json.dumps(body))
+            # print(req.text)
+            req.raise_for_status()
+        except requests.exceptions.JSONDecodeError as e:
+            print(f"JSON decoding error: {e}")
+            # Log the exception details for debugging
+            # print(f"Response text: {req.text}")
+        else:
+            data = req.json()
+            doc = html.fromstring(f'<!doctype html><html><head></head><body>{data["head"]}{data["text"]}</body></html>')
+            processed_item = {
+                "text": html.tostring(doc, pretty_print=True).decode("utf-8"),
+                "link": item["link"],
+                "docId": item["docId"],
+                "doc_part": doc_part,
+                "url": "www.landesrecht.sachsen-anhalt.de",
+                "filetype": "html"
+            }
+            result_items.append(processed_item)
+
+    # print(result_items)
+
+    return result_items
 
 def th(item, headers, cookies): # spider.headers, spider.cookies
     # item["text"]: Thüringen ist JSON-Post-Response
@@ -475,18 +511,54 @@ def th(item, headers, cookies): # spider.headers, spider.cookies
     headers["Referer"] = item["link"]
     date = str(datetime.date.today())
     time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
-    body = '{"docId":"%s","format":"xsl","keyword":null,"docPart":"L","sourceParams":{"source":"TL","position":1,"sort":"date","category":"Rechtsprechung"},"searches":[],"clientID":"bsth","clientVersion":"bsth - V06_07_00 - 23.06.2022 11:20","r3ID":"%sT%sZ"}' % (item["docId"], date, time)
-    if (item["wait"] == True): timelib.sleep(1.75)
-    try:
-        req = requests.post(url=url, cookies=cookies, headers=headers, data=body)
-    except:
-        output("could not retrieve " + item["link"], "err")
-    else:
-        data = req.json()
-        doc = html.fromstring(f'<!doctype html><html><head><title>{item["az"]}</title></head><body>{data["head"]}{data["text"]}</body></html>')
-        item["text"] = html.tostring(doc, pretty_print=True).decode("utf-8")
-        item["filetype"] = "html"
-        return item
+    doc_parts = ["S", "X", "s"]
+    result_items = []
+    encoded_docId = quote(item["docId"], safe=':/')
+
+    headers["x-csrf-token"] = item["xcsrft"]
+    headers["Cookie"] = 'r3autologin="bsth"'
+
+    for doc_part in doc_parts:
+        # print('In--------------', doc_part)
+        headers[
+            "Referer"] = "https://landesrecht.thueringen.de/jportal/wsrest/recherche3/document/" + encoded_docId + "/part/" + doc_part
+        item["link"] = headers["Referer"]
+
+        body = {"docId": item["docId"], "format": "xsl", "keyword": None,
+                "docPart": doc_part,
+                "sourceParams": {"source": "Unknown", "category": "Alles"}, "searches": [], "clientID": "bsth",
+                "clientVersion": "bsth - V07_12_00 - 09.11.2023 10:02", "r3ID": date + "T" + time + "Z"}
+
+        # print(body)
+
+        if item["wait"]:
+            timelib.sleep(1.75)
+
+        try:
+            import json
+            req = requests.post(url=url, cookies=cookies, headers=headers, data=json.dumps(body))
+            # print(req.text)
+            req.raise_for_status()
+        except requests.exceptions.JSONDecodeError as e:
+            print(f"JSON decoding error: {e}")
+            # Log the exception details for debugging
+            # print(f"Response text: {req.text}")
+        else:
+            data = req.json()
+            doc = html.fromstring(f'<!doctype html><html><head></head><body>{data["head"]}{data["text"]}</body></html>')
+            processed_item = {
+                "text": html.tostring(doc, pretty_print=True).decode("utf-8"),
+                "link": item["link"],
+                "docId": item["docId"],
+                "doc_part": doc_part,
+                "url": "landesrecht.thueringen.de",
+                "filetype": "html"
+            }
+            result_items.append(processed_item)
+
+    # print(result_items)
+
+    return result_items
 
 def ni(item):
     if (item["wait"] == True): timelib.sleep(1)
