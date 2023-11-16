@@ -562,7 +562,7 @@ def th(item, headers, cookies): # spider.headers, spider.cookies
     headers["Referer"] = item["link"]
     date = str(datetime.date.today())
     time = str(datetime.datetime.now(datetime.timezone.utc).time())[0:-3]
-    doc_parts = ["S", "X", "s"]
+    doc_parts = ["S", "X"]
     result_items = []
     encoded_docId = quote(item["docId"], safe=':/')
 
