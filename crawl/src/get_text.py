@@ -160,14 +160,23 @@ def by(item):
     except:
         output("could not retrieve " + item["link"], "err")
     else:
-        if txt[154:160] != "Fehler": # Herausfiltern von leeren Seiten / bei leeren Seite ist text[10] == "h" / schnellere Version
+        """if txt[154:160] != "Fehler": # Herausfiltern von leeren Seiten / bei leeren Seite ist text[10] == "h" / schnellere Version
             tree = etree.fromstring(txt.replace('\r\n', '\n'))
             tree.xpath("//script")[0].getparent().remove(tree.xpath("//script")[0]) # Druck-Dialog entfernen
-            item["text"] = etree.tostring(tree, pretty_print=True, xml_declaration=True).decode("ascii")
-            item["filetype"] = "xhtml"
-            return item
-        else:
-            output("empty page " + item["link"], "err")
+            item["text"] = etree.tostring(tree, pretty_print=True, xml_declaration=True).decode("ascii")"""
+        result_items = []
+        processed_item = {
+            "text": txt,
+            "link": item["link"],
+            "docId": item["docId"],
+            "doc_part": None,
+            "url": "www.gesetze-bayern.de",
+            "filetype": "html"
+        }
+        result_items.append(processed_item)
+
+        return result_items
+
 
 def he(item, headers, cookies): # spider.headers, spider.cookies
     # item["text"]: Hessen ist JSON-Post-Response
@@ -498,7 +507,39 @@ def sn(item, headers): # spider.headers
         except:
             output("could not retrieve " + item["link"], "err")
         else:
-            item["link"] = "https://www.justiz.sachsen.de/ovgentschweb/" + tree.xpath("//a[@target='_blank']/@href")[0]
+            #item["link"] = "https://www.justiz.sachsen.de/ovgentschweb/" + tree.xpath("//a[@target='_blank']/@href")[0]
+            return item
+def bund(item): # spider.headers
+    if "body" in item: # AG/LG/OLG-Subportal
+        url = "https://www.justiz.sachsen.de/esamosplus/pages/treffer.aspx"
+        #headers["Referer"] = "Referer: https://www.justiz.sachsen.de/esamosplus/pages/suchen.aspx"
+        if (item["wait"] == True): timelib.sleep(1)
+        try:
+            item["req"] = requests.post(url=url, data=item["body"])
+        except:
+            output("could not retrieve " + item["az"], "err")
+        else:
+            return item
+    elif "link" in item: # OVG-Subportal
+        if (item["wait"] == True): timelib.sleep(1)
+        try:
+            # Zwischengeschaltete Seite, von der aus erst der Filelink kopiert werden muss
+            tree = html.fromstring(requests.get(item["link"]).text)
+        except:
+            output("could not retrieve " + item["link"], "err")
+        else:
+            result_items = []
+            processed_item = {
+                "link": item["link"],
+                "docId": item["docId"],
+                "doc_part": None,
+                "url": "www.gesetze-bayern.de",
+                "filetype": "pdf"
+            }
+            result_items.append(processed_item)
+
+            return result_items
+            #item["link"] = "https://www.justiz.sachsen.de/ovgentschweb/" + tree.xpath("//a[@target='_blank']/@href")[0]
             return item
 
 def st(item, headers, cookies):

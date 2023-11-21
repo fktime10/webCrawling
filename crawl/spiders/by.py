@@ -15,7 +15,7 @@ class SpdrBY(scrapy.Spider):
             AZsPipeline: 100,
             DatesPipeline: 200,
             CourtsPipeline: 300,
-            # TextsPipeline: 400,
+            TextsPipeline: 400,
             ExportAsHtmlPipeline: 500,
             FingerprintExportPipeline: 600,
             RawExporter: 900
@@ -25,7 +25,7 @@ class SpdrBY(scrapy.Spider):
     def __init__(self, path, courts="", states="", fp=False, domains="", store_docId=False, postprocess=False,
                  **kwargs):
         self.path = path
-        self.courts = courts
+        self.courts = None
         self.states = states
         self.fp = fp
         self.domains = domains
@@ -60,43 +60,49 @@ class SpdrBY(scrapy.Spider):
                 "LEVEL2RSPRTREENODE/Verwaltungsgerichte/Verwaltungsgerichtsbarkeit")
             if "verfgh" in self.courts: start_urls.append("LEVEL1RSPRTREENODE/Verfassungsgerichtsbarkeit")
         else:
-            start_urls.append("DOKTYP/rspr")
+            start_urls.append("DOKTYP/norm")
 
         for i, url in enumerate(start_urls):
             #print(base_url + url)
             yield scrapy.Request(url=base_url + url, meta={'cookiejar': i}, dont_filter=True, callback=self.parse)
 
     def parse(self, response):
-        if not response.xpath("//div[@id='hinweis']"):  # Bei Hinweis Seite ohne Suchergebnisse
-            for item in response.xpath("//li[@class='hitlistItem']"):
+        #print('hi')
+        if response.xpath("//div[@id='hitlist']"):  # Bei Hinweis Seite ohne Suchergebnisse
+            for a_link in response.xpath('//*[@id="hitlist"]/ul/li/div[2]/p/a'):
+                link_text = a_link.xpath('./@href').extract_first()
+                #print('Link:', link_text)
                 # Wenn Rechtsgebiet ausgewählt weitere Unterscheidung notwendig, da ag + lg + olg == Straf UND Zivil
                 # ggf. Filtern nach Aktenzeichen?
                 #print('item', item)
-                if ("straf" in self.domains and not "zivil" in self.domains):
+                """if ("straf" in self.domains and not "zivil" in self.domains):
                     output("filter (-s by -d straf) not yet implemented", "warn")
                     # Ausbauen ....
                 elif ("zivil" in self.domains and not "straf" in self.domains):
-                    output("filter (-s by -d zivil) not yet implemented", "warn")
+                    output("filter (-s by -d zivil) not yet implemented", "warn")"""
                     # Ausbauen .... 
                 # Gerichtsbezeichnung ggf. von Zsf. der Entscheidung trennen
-                court = item.xpath(".//a/b/text()").get()
+                #court = item.xpath(".//a/b/text()").get()
                 #print('court', court)
-                if ":" in court: court = court.split(":")[0]
+                #if ":" in court: court = court.split(":")[0]
                 #print('court', court)
                 # AZ und Datum auftrennen
-                subtitel = item.xpath("//*[@id='hitlist']/ul/li[1]/div[2]/p[2]/text()").get()
+                #subtitel = item.xpath("//*[@id='hitlist']/ul/li[1]/div[2]/p[2]/text()").get()
                 #print(subtitel)
 
-                date = re.search("([0-9]{2}\.[0-9]{2}\.[0-9]{4})", subtitel)[0]
-                az = subtitel.split(" – ")[1]
-                zipLink = self.base_url + item.xpath(".//a/@href").get()[:-8].replace("Document", "Zip")
+                #date = re.search("([0-9]{2}\.[0-9]{2}\.[0-9]{4})", subtitel)[0]
+                #az = subtitel.split(" – ")[1]
+                #zipLink = self.base_url + item.xpath(".//a/@href").get()[:-8].replace("Document", "Zip")
+                match = re.search(r'/Content/Document/([^?]+)\?hl=true', link_text)
+
+                if match:
+                    docid = match.group(1)
 
                 yield {
                     "postprocess": self.postprocess,
-                    "court": court,
-                    "date": date,
-                    "az": az.rstrip(),
-                    "link": zipLink
+                    "court": None,
+                    "link": self.base_url + '/Content/Document/' + docid + '/true' ,
+                    "docId": docid,
                 }
 
         if response.xpath("//a[text()='→']"):

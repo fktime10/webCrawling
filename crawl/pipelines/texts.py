@@ -9,8 +9,10 @@ class TextsPipeline:
             return be(item, spider.headers, spider.cookies)
         elif spider.name[7:] == "bw":
             return bw(item, spider.headers, spider.cookies)
-        #elif spider.name[7:] == "by":
-        #    return by(item)
+        elif spider.name[7:] == "by":
+            return by(item)
+        elif spider.name[7:] == "bund":
+            return by(item)
         elif spider.name[7:] == "he":
             return he(item, spider.headers, spider.cookies)
         elif spider.name[7:] == "hh":

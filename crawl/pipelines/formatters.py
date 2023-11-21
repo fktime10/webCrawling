@@ -18,9 +18,10 @@ class AZsPipeline:
 class DatesPipeline:
     def process_item(self, item, spider):                
         #Formattierung der Daten
-        item["date"] = item["date"].strip()
-        item["date"] = datetime.datetime.strptime(item["date"], "%d.%m.%Y").strftime("%Y%m%d")
-        # Weitergabe an die individuellen Pipelines
+        if "date" in item:
+            item["date"] = item["date"].strip()
+            item["date"] = datetime.datetime.strptime(item["date"], "%d.%m.%Y").strftime("%Y%m%d")
+            # Weitergabe an die individuellen Pipelines
         #print('pipe2', item)
         return item
 
@@ -54,10 +55,11 @@ class CourtsPipeline:
     def process_item(self, item, spider):
         court = item["court"]
         if spider.name[7:] == "bund":
-            court = court.lower()
-            for c in ["bgh", "bfh", "bverwg", "bverfg", "bpatg", "bag", "bsg"]:
-                if c in court.split():
-                    court = c
+            if court is not None:
+                court = court.lower()
+                for c in ["bgh", "bfh", "bverwg", "bverfg", "bpatg", "bag", "bsg"]:
+                    if c in court.split():
+                        court = c
         else:
             # Standard-Formatierung der Gerichtsnamen für alle LÄNDER
             if court is not None:
