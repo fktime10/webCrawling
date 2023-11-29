@@ -9,7 +9,7 @@ import dataframe_image as dfi
 
 nlp = spacy.load("de_core_news_sm")
 S3_PATH = "s3://{}/{}"
-NOUN_POS = ["NOUN", "PROPN", ""]
+NOUN_POS = ["NOUN", "PROPN"]
 
 
 def noun_to_word_ratio(doc):
@@ -48,7 +48,6 @@ def compute_doc_level_metrics(row: pd.Series, config: dict, column: str):
 
 
 def convert_images_to_pdf(img_paths: list):
-    print(img_paths)
     with open("report.pdf", "wb") as f:
         f.write(img2pdf.convert([img for img in img_paths]))
 
