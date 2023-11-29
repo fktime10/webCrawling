@@ -1,0 +1,16 @@
+output_dir="graphs"
+[s3]
+bucket="hyde-data-normalized"
+sources=["Beck Aktuell/Beck_Aktuell_Magazine.jsonl",
+"Court_decisions/normalizeTH.jsonl"]
+column='text'
+key="" 
+secret=""
+
+[metrics]
+num_words=1
+num_tokens=0
+num_sentences=1
+num_unique_words=1
+noun_to_word_ratios=1
+distributions=1
