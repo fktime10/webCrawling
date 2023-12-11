@@ -1,13 +1,13 @@
 import os
-import tomllib
+import toml
 import pandas as pd
 import spacy
 import img2pdf
 import matplotlib.pyplot as plt
 import seaborn as sns
-import dataframe_image as dfi
 
 nlp = spacy.load("de_core_news_sm")
+nlp.max_length = 2000000
 S3_PATH = "s3://{}/{}"
 NOUN_POS = ["NOUN", "PROPN"]
 
@@ -27,28 +27,24 @@ def compute_doc_level_metrics(row: pd.Series, config: dict, column: str):
     text = row[column]
     doc = nlp(text)
     if config["num_words"]:
-        print("Computing num_words")
         metrics.append("num_words")
         row["num_words"] = sum([1 if token.is_alpha else 0 for token in doc])
     if config["num_sentences"]:
-        print("Computing num_sents")
         metrics.append("num_sentences")
         row["num_sentences"] = len(list(doc.sents))
     if config["num_unique_words"]:
-        print("Computing num_unique words")
         metrics.append("num_unique_words")
         row["num_unique_words"] = len(
             list(set([token.text for token in doc if token.is_alpha]))
         )
     if config["noun_to_word_ratios"]:
-        print("Computing noun_to_word_ratios")
         metrics.append("noun_to_word_ratios")
         row["noun_to_word_ratios"] = noun_to_word_ratio(doc)
     return row[metrics + ["id", "source"]]
 
 
-def convert_images_to_pdf(img_paths: list):
-    with open("report.pdf", "wb") as f:
+def convert_images_to_pdf(config: dict, img_paths: list):
+    with open(f"{config['output_dir']}/report.pdf", "wb") as f:
         f.write(img2pdf.convert([img for img in img_paths]))
 
 
@@ -65,11 +61,8 @@ def generate_distributions(config: dict, res: pd.DataFrame):
         plt.title(metric.upper().replace("_", " "))
         plt.savefig(f'{config["output_dir"]}/res_{metric}.png')
         plt.figure()
-    convert_images_to_pdf(
-        [f'{config["output_dir"]}/counts.png']
-        + [f"{config['output_dir']}/res_{i}.png" for i in metrics]
+    convert_images_to_pdf(config, [f"{config['output_dir']}/res_{i}.png" for i in metrics]
     )
-    # shutil.rmtree("")
 
 
 def persist_metric_counts(
@@ -100,22 +93,21 @@ def compute_metrics(config: dict):
 
     for src in sources:
         src_name = src.split("/")[-1].replace(".jsonl", "")
-        print(f"Computing metrics for src: {src}")
+        if src_name=="*":
+            src_name = src.split("/")[0]
+        print(f"Computing metrics for src: {src}, src_name: {src_name}")
         df = pd.read_json(
             S3_PATH.format(bucket, src), storage_options=aws_creds, lines=True
         )
-        print("File read complete")
-        src_metrics_df = df.swifter.apply(
+        print(f"File read complete: num_rows: {df.shape}")
+        src_metrics_df = df.apply(
             compute_doc_level_metrics, config=config["metrics"], column=column, axis=1
         )
         res = pd.concat((res, src_metrics_df))
         counts = persist_metric_counts(src_name, src_metrics_df, counts, metrics)
     # save dataframes
     res.to_csv(f"{config['output_dir']}/FinalMetrics.csv")
-    counts = counts.style.set_table_attributes("style='display:inline'").set_caption(
-        "Total counts per sources."
-    )
-    dfi.export(counts, f'{config["output_dir"]}/counts.png')
+    counts.to_csv(f"{config['output_dir']}/counts.csv")
     # generate distributions
     if config["metrics"]["distributions"]:
         generate_distributions(config, res)
@@ -123,5 +115,7 @@ def compute_metrics(config: dict):
 
 
 if __name__ == "__main__":
-    config = tomllib.load(open("config.toml", "rb"))
+    with open("config.toml", "r") as f:
+        config = toml.load(f)
     compute_metrics(config)
+    exit(-1)

@@ -1,0 +1,8 @@
+toml==0.10.2
+spacy==3.7.2
+spacy-legacy==3.0.12
+spacy-loggers==1.0.5
+img2pdf==0.5.1
+matplotlib
+seaborn
+s3fs
