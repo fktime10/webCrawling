@@ -1,0 +1,15 @@
+[s3]
+bucket="hyde-data-normalized"
+column='text'
+key="" 
+secret=""
+output_dir='result' #dataset written within the same bucket
+
+[sources]
+paths = ["Beck Aktuell/*"]
+#you can include more datasets like so- to include all files inside a folder, use the wildcard '*'
+# paths = ["Beck Aktuell/*",
+# "Juris/*",
+# "Court_decisions/normalizeTH.jsonl"]
+[composition]
+train=0.7

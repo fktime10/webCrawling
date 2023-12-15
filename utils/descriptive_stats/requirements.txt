@@ -6,3 +6,5 @@ img2pdf==0.5.1
 matplotlib
 seaborn
 s3fs
+pandas
+boto3
