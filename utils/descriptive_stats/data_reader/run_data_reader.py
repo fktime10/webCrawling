@@ -27,33 +27,34 @@ def read_source(bucket: Any, source: str, aws_creds: dict, has_wild_card:bool=Fa
     else:
         files = [S3_Path.format(bucket.name , source)]    
     df = pd.concat([read_jsonl(f_path, aws_creds) for f_path in files])
-    print(f"Finished reading all files from source : {source}")
     print(f"Total number of rows : {df.shape}")
     return df
 
-
 def compose_datasets(config):
     res = pd.DataFrame()
-    train_file_path = S3_Path.format(config['s3']['bucket'], config['s3']['output_dir']) + f"/train_{timestamp}.csv"
-    test_file_path = S3_Path.format(config['s3']['bucket'], config['s3']['output_dir']) + f"/test_{timestamp}.csv"
-    op_dir = config["s3"]["output_dir"]
-    sources = config["sources"]["paths"]
-    bucket_name = config["s3"]["bucket"]
+    train_file_path = S3_Path.format(config['s3']['output_bucket'], config['s3']['output_dir']) + f"/trainset_{timestamp}.csv"
+    test_file_path = S3_Path.format(config['s3']['output_bucket'], config['s3']['output_dir']) + f"/testset_{timestamp}.csv"
     aws_creds = {"key": config["s3"]["key"], "secret": config["s3"]["secret"]}
-    s3_bucket = get_s3_bucket(bucket_name, aws_creds)
-    for src in sources:
-        has_wild_card = True if '*' in src else False
+    for source in config["sources"]:
+        print(f"Composing sources from the bucket: {source['bucket']}")
+        paths = source["paths"]
+        bucket_name = source["bucket"]
+        s3_bucket = get_s3_bucket(bucket_name, aws_creds)
+        for path in paths:
+            has_wild_card = True if '*' in path else False
         if has_wild_card:
-            src = src.split("/")[0] #remove the * from the path
-        res = pd.concat([res, read_source(s3_bucket, src, aws_creds, has_wild_card)])
-    #split to train-test
+            path = path.split("/")[0] #remove the * from the path
+        res = pd.concat([res, read_source(s3_bucket, path, aws_creds, has_wild_card)])
+        print(f"Finished reading all files from bucket/source : {bucket_name}/{source}")
+    #shuffle and split to train-test
+    res = res.sample(frac=1)
     train_df = res.sample(frac=config["composition"]["train"],random_state=200)
     test_df = res.drop(train_df.index)
     print(f"Train shape: {train_df.shape}")
     print(f"Test shape: {test_df.shape}")
     train_df.to_csv(train_file_path, storage_options=aws_creds)
     test_df.to_csv(test_file_path, storage_options=aws_creds)
-    print("File written to s3")
+    print("Files written to s3")
         
 if __name__=="__main__":
     with open("config.toml", "r") as f:

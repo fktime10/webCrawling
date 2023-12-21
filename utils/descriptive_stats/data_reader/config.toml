@@ -1,15 +1,16 @@
 [s3]
-bucket="hyde-data-normalized"
 column='text'
 key="" 
 secret=""
-output_dir='result' #dataset written within the same bucket
+output_dir='composed_datasets'
+output_bucket = "hyde-data-preprocessed"
 
-[sources]
-paths = ["Beck Aktuell/*"]
-#you can include more datasets like so- to include all files inside a folder, use the wildcard '*'
-# paths = ["Beck Aktuell/*",
-# "Juris/*",
-# "Court_decisions/normalizeTH.jsonl"]
+[[sources]]
+bucket="hyde-data-normalized"
+paths = ["Juris/*", "Beck Aktuell/*"]
+[[sources]]
+bucket="hyde-data-preprocessed"
+paths = ["Court_decisions/*", "Legal_laws/*"]
+
 [composition]
 train=0.7
